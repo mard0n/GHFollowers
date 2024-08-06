@@ -27,6 +27,7 @@ class FollowersListVC: UIViewController {
         getFollowers(username: username, page: currentPage)
         configureCollectionView()
         configureDataSource()
+        configureSearchController()
     }
     
     
@@ -47,7 +48,7 @@ class FollowersListVC: UIViewController {
                     hasMoreFollowers = false
                 }
                 self.followers.append(contentsOf: followers)
-                self.updateSnapshot()
+                self.updateSnapshot(with: self.followers)
             case.failure(let error):
                 let alertController = UIAlertController(title: "Request failed", message: error.rawValue, preferredStyle: .alert)
                 
@@ -88,7 +89,7 @@ class FollowersListVC: UIViewController {
         
     }
     
-    func updateSnapshot() {
+    func updateSnapshot(with followers: [Follower]) {
         var snapshot = NSDiffableDataSourceSnapshot<Section, Follower>()
         snapshot.appendSections([.main])
         snapshot.appendItems(followers, toSection: .main)
@@ -96,6 +97,18 @@ class FollowersListVC: UIViewController {
             self.dataSource.apply(snapshot, animatingDifferences: true)
         }
     }
+    
+    
+    func configureSearchController() {
+        let searchController = UISearchController()
+        searchController.searchBar.placeholder = "Search for a username"
+        searchController.searchResultsUpdater = self
+        searchController.delegate = self
+        
+        navigationItem.searchController = searchController
+        navigationItem.hidesSearchBarWhenScrolling = false
+    }
+    
 }
 
 extension FollowersListVC: UICollectionViewDelegate {
@@ -113,4 +126,17 @@ extension FollowersListVC: UICollectionViewDelegate {
             getFollowers(username: username, page: currentPage)
         }
     }
+}
+
+extension FollowersListVC: UISearchResultsUpdating, UISearchControllerDelegate {
+    func updateSearchResults(for searchController: UISearchController) {
+        guard let filter = searchController.searchBar.text, !filter.isEmpty else {return}
+        let filteredFollowers = followers.filter{$0.login.lowercased().contains(filter.lowercased()) }
+        updateSnapshot(with: filteredFollowers)
+    }
+    
+    func didDismissSearchController(_ searchController: UISearchController) {
+        updateSnapshot(with: followers)
+    }
+    
 }
